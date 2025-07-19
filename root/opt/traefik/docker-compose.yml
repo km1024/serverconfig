@@ -1,0 +1,139 @@
+# Docker Compose configuration for Traefik - /opt/traefik/docker-compose.yml
+version: '3.8'
+
+networks:
+  traefik_proxy:
+    name: traefik_proxy # Explicitly name the network
+    driver: bridge      # Use the default bridge driver
+
+services:
+  # --- Traefik Service ---
+  traefik:
+    image: traefik:v2.11
+    container_name: traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true # Improve security
+    networks:
+      - traefik_proxy
+    ports:
+      # Map host ports 80/443 to container ports 80/443
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Mount Docker socket (read-only)
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Mount static configuration file (read-only) - relative path assumes compose runs from TRAEFIK_DIR
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro
+      # Mount data directory for Let's Encrypt certs
+      - ./data:/data
+      # Mount logs directory
+      - ./logs:/logs
+      # Optional: Mount dynamic config directory if using file provider
+      # - ./dynamic_conf:/etc/traefik/dynamic_conf:ro
+    labels:
+      # Enable Traefik to manage itself (for dashboard)
+      - "traefik.enable=true"
+
+      # Global IP rate-limits
+      - "traefik.http.middlewares.global-ip-ratelimit.ratelimit.average=5"
+      - "traefik.http.middlewares.global-ip-ratelimit.ratelimit.burst=10"
+      - "traefik.http.middlewares.global-ip-ratelimit.ratelimit.period=2s"
+
+      # --- Dashboard Router (Secure) ---
+      # Rule to access the dashboard via specific hostname
+      - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.lab1729.com`)"
+      # Use the secure entrypoint (HTTPS)
+      - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
+      # Use the internal api@internal service for the dashboard
+      - "traefik.http.routers.traefik-dashboard.service=api@internal"
+      # Use the Let's Encrypt resolver for the dashboard's TLS certificate
+      - "traefik.http.routers.traefik-dashboard.tls.certresolver=myresolver"
+      # Apply the basic authentication middleware defined below
+      - "traefik.http.routers.traefik-dashboard.middlewares=auth@docker"
+
+      # --- Dashboard Basic Authentication Middleware ---
+      # Define the middleware
+      - "traefik.http.middlewares.auth.basicauth.users=wwwadm:$$apr1$$.2PiyTDR$$RKbNDNC6BV/WWTqX3O40B/"
+      # Note: The user:hash format requires escaping $ characters in the hash.
+      #       The script handles this when generating DASHBOARD_PASS_HASHED.
+
+  # --- Static Website Service (using Nginx) ---
+  static-site:
+    image: nginx:alpine
+    container_name: static-site-server
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - traefik_proxy
+    volumes:
+      # Mount the website files into Nginx's default web root (read-only)
+      # IMPORTANT: Ensure the user running docker/docker-compose has read access to WEB_ROOT on the host
+      - "/var/www/html:/usr/share/nginx/html:ro"
+    labels:
+      # Enable Traefik for this container
+      - "traefik.enable=true"
+
+      # --- Router for HTTPS ---
+      # Define the hostname(s) for this service
+      - "traefik.http.routers.static-site-secure.rule=Host(`lab1729.com`) || Host(`www.lab1729.com`)"
+      # Use the secure entrypoint (HTTPS)
+      - "traefik.http.routers.static-site-secure.entrypoints=websecure"
+      # Link to the service definition below
+      - "traefik.http.routers.static-site-secure.service=static-site-svc"
+      # Use the Let's Encrypt resolver for TLS certificate
+      - "traefik.http.routers.static-site-secure.tls.certresolver=myresolver"
+
+      # --- Router for HTTP (will be redirected by global config) ---
+      # Still needed for the HTTP->HTTPS redirect mechanism via entrypoint config
+      - "traefik.http.routers.static-site-web.rule=Host(`lab1729.com`) || Host(`www.lab1729.com`)"
+      - "traefik.http.routers.static-site-web.entrypoints=web"
+      - "traefik.http.routers.static-site-web.service=static-site-svc"
+
+      # --- Service Definition ---
+      # Define how Traefik connects to this container
+      # Nginx container listens on port 80 internally
+      - "traefik.http.services.static-site-svc.loadbalancer.server.port=80"
+
+  # Checkinbot
+  checkinbot-app:
+    image: ghcr.io/km1024/checkinbot/checkinbot:live
+    container_name: checkinbot-app-server
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - traefik_proxy
+    volumes:
+      - checkinbot-data:/app/data
+    env_file:
+      - ./checkinbot.env
+      - ./checkinbot.secrets.env
+    labels:
+      # Enable Traefik for this container
+      - "traefik.enable=true"
+
+      # --- Router for HTTPS ---
+      # Define the hostname(s) for this service
+      - "traefik.http.routers.checkinbot-app-secure.rule=Host(`checkinbot.app`) || Host(`www.checkinbot.app`)"
+      # Use the secure entrypoint (HTTPS)
+      - "traefik.http.routers.checkinbot-app-secure.entrypoints=websecure"
+      # Link to the service definition below
+      - "traefik.http.routers.checkinbot-app-secure.service=checkinbot-app-svc"
+      # Use the Let's Encrypt resolver for TLS certificate
+      - "traefik.http.routers.checkinbot-app-secure.tls.certresolver=myresolver"
+
+      # --- Router for HTTP (will be redirected by global config) ---
+      # Still needed for the HTTP->HTTPS redirect mechanism via entrypoint config
+      - "traefik.http.routers.checkinbot-app-web.rule=Host(`checkinbot.app`) || Host(`www.checkinbot.app`)"
+      - "traefik.http.routers.checkinbot-app-web.entrypoints=web"
+      - "traefik.http.routers.checkinbot-app-web.service=checkinbot-app-svc"
+
+      # --- Service Definition ---
+      # Define how Traefik connects to this container
+      # Flask container listens on port 5000 internally
+      - "traefik.http.services.checkinbot-app-svc.loadbalancer.server.port=5000"
+
+volumes:
+  checkinbot-data:

@@ -1,0 +1,66 @@
+# Traefik static configuration - /opt/traefik/traefik.yml
+global:
+  checkNewVersion: true
+  sendAnonymousUsage: false # Set to true to help Traefik improve
+
+# Log configuration
+log:
+  level: INFO # (DEBUG, INFO, WARNING, ERROR, FATAL, PANIC)
+  filePath: /logs/traefik.log
+  format: json
+
+# Access log configuration
+accessLog:
+  filePath: /logs/access.log
+  format: json
+
+# EntryPoints definition
+entryPoints:
+  web:
+    address: ":80"
+    # Redirect all HTTP traffic to HTTPS
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+
+  websecure:
+    address: ":443"
+    # Define default TLS configuration
+    http:
+      tls:
+        certResolver: myresolver # Use the Let's Encrypt resolver defined below
+        # Optional: Define default domains if needed, though labels are preferred
+        # domains:
+        #   - main: "lab1729.com"
+        #     sans:
+        #       - "www.lab1729.com" # Use additional if exists, else primary
+
+# API and Dashboard configuration
+api:
+  dashboard: true
+  insecure: false # Keep dashboard secure, access via router rule
+
+# Providers configuration
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false # Explicitly enable containers via labels
+    network: traefik_proxy # Specify the network Traefik should watch
+
+  # Optional: File provider for dynamic configurations (uncomment if needed)
+  # file:
+  #   directory: /etc/traefik/dynamic_conf
+  #   watch: true
+
+# Certificates Resolvers configuration (Let's Encrypt)
+certificatesResolvers:
+  myresolver:
+    acme:
+      email: karthikm@gmail.com
+      storage: /data/acme.json
+      # Use HTTP-01 challenge over the 'web' entryPoint
+      httpChallenge:
+        entryPoint: web
