@@ -13,7 +13,7 @@ services:
     volumes:
       - ~/.cache/huggingface:/root/.cache/huggingface
     environment:
-      - HUGGING_FACE_HUB_TOKEN=your_hf_token_here
+      - HF_TOKEN=${HF_TOKEN}
     command: >
       --model Qwen/Qwen3.6-27B
       --trust-remote-code
