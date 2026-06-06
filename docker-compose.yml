@@ -15,10 +15,9 @@ services:
     environment:
       - HF_TOKEN=${HF_TOKEN}
     command: >
-      --model Qwen/Qwen3.6-27B
+      --model unsloth/Qwen3.6-27B-NVFP4
       --trust-remote-code
-      --dtype bfloat16
-      --gpu-memory-utilization 0.90
+      --gpu-memory-utilization 0.85
       --max-model-len 65536
       --enable-chunked-prefill
       --max-num-batched-tokens 8192
