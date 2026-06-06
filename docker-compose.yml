@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: vllm_engine
+    restart: always
+    runtime: nvidia
+    ipc: host
+    # SECURITY: The 'ports' directive has been removed.
+    # 'expose' makes port 8000 accessible ONLY to other containers on the ai_network.
+    expose:
+      - "8000"
+    volumes:
+      - ~/.cache/huggingface:/root/.cache/huggingface
+    environment:
+      - HUGGING_FACE_HUB_TOKEN=your_hf_token_here
+    command: >
+      --model Qwen/Qwen2.5-32B-Instruct 
+      --gpu-memory-utilization 0.90 
+      --max-model-len 32768
+    networks:
+      - ai_network
+    security_opt:
+      - no-new-privileges:true
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open_webui
+    restart: always
+    # SECURITY: This is the only port exposed to your Tailnet
+    ports:
+      - "3000:8080"
+    environment:
+      # Open WebUI securely routes traffic internally using the container name
+      - OPENAI_API_BASE_URL=http://vllm:8000/v1
+      - OPENAI_API_KEY=vllm_requires_a_dummy_key
+      - WEBUI_AUTH=True
+    volumes:
+      - open-webui-data:/app/backend/data
+    depends_on:
+      - vllm
+    networks:
+      - ai_network
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  open-webui-data:
+
+# Explicitly defining a custom bridge network guarantees isolated inter-container routing
+networks:
+  ai_network:
+    driver: bridge
+
