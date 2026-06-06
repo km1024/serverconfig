@@ -16,9 +16,13 @@ services:
     environment:
       - HUGGING_FACE_HUB_TOKEN=your_hf_token_here
     command: >
-      --model Qwen/Qwen2.5-32B-Instruct 
-      --gpu-memory-utilization 0.90 
-      --max-model-len 32768
+      --model Qwen/Qwen3.6-27B
+      --trust-remote-code
+      --dtype bfloat16
+      --gpu-memory-utilization 0.90
+      --max-model-len 65536
+      --enable-chunked-prefill
+      --max-num-batched-tokens 8192
     networks:
       - ai_network
     security_opt:
