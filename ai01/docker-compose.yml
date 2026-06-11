@@ -11,7 +11,7 @@ services:
     expose:
       - "8000"
     volumes:
-      - ~/.cache/huggingface:/root/.cache/huggingface
+      - /srv/vllm/huggingface-cache:/root/.cache/huggingface
     env_file:
       - ./vllm.secrets.env
     command: >
