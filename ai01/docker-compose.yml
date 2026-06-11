@@ -49,9 +49,6 @@ services:
     security_opt:
       - no-new-privileges:true
 
-volumes:
-  open-webui-data:
-
 # Explicitly defining a custom bridge network guarantees isolated inter-container routing
 networks:
   ai_network:
