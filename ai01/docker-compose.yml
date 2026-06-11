@@ -12,8 +12,8 @@ services:
       - "8000"
     volumes:
       - ~/.cache/huggingface:/root/.cache/huggingface
-    environment:
-      - HF_TOKEN=${HF_TOKEN}
+    env_file:
+      - ./vllm.secrets.env
     command: >
       --model unsloth/Qwen3.6-27B-NVFP4
       --trust-remote-code
@@ -56,4 +56,3 @@ volumes:
 networks:
   ai_network:
     driver: bridge
-
