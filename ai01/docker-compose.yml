@@ -41,7 +41,7 @@ services:
       - OPENAI_API_KEY=vllm_requires_a_dummy_key
       - WEBUI_AUTH=True
     volumes:
-      - open-webui-data:/app/backend/data
+      - /srv/open-webui/data:/app/backend/data
     depends_on:
       - vllm
     networks:
