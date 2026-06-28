@@ -1,0 +1,22 @@
+#cloud-config
+autoinstall:
+  version: 1
+  locale: en_US.UTF-8
+  keyboard:
+    layout: us
+  identity:
+    hostname: ubuntu-template
+    username: ops
+    # This is a hashed placeholder password "packer" just to satisfy the installer
+    password: "$6$exHDSa13pT.2$mS9P9BCv/m.q4GvFfR7Lh4p/eXb1W8X0gE/yU1b8uO8O7C7eL.f3U9F9QO1c3T.1K0eP8A0" 
+  ssh:
+    install-server: true
+    allow-pw: false
+    authorized-keys:
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINShrwRGM/GTb7F5yvHLS9bIN0Il56ouG2Yz2+3P/ErL karthik@Karthiks-MacBook-Air.local"
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJNBpzg7EeX8NMk59rKN+qRb8kTqP5bb41xyh9ysaMrl karthik@manticore"
+  packages:
+    - qemu-guest-agent
+  user-data:
+    package_upgrade: true
+
