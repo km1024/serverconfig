@@ -1,0 +1,84 @@
+---
+- name: Configure Proxmox Server VMs
+  hosts: server_vms
+  become: yes # Ensures all tasks run as root via sudo
+  tasks:
+    
+    # --- PHASE 1: DISK FORMATTING & MOUNTING ---
+    - name: Format the raw block device (/dev/sdb) as ext4
+      community.general.filesystem:
+        fstype: ext4
+        dev: /dev/sdb
+        force: no
+
+    - name: Create the mount point directory
+      ansible.builtin.file:
+        path: /srv
+        state: directory
+        mode: '0755'
+
+    - name: Mount the volume and add to /etc/fstab
+      ansible.posix.mount:
+        path: /srv
+        src: /dev/sdb
+        fstype: ext4
+        state: mounted
+
+    # --- PHASE 2: DOCKER INSTALLATION ---
+    - name: Install prerequisites
+      ansible.builtin.apt:
+        name:
+          - ca-certificates
+          - curl
+        state: present
+        update_cache: yes
+
+    - name: Create directory for Docker apt keys
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Download Docker's official GPG key
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+
+    - name: Add Docker repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+        filename: docker
+
+    - name: Install Docker Engine
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-compose-plugin
+        state: present
+        update_cache: yes
+
+    # --- PHASE 3: DOCKER STORAGE REDIRECTION ---
+    - name: Ensure Docker config directory exists
+      ansible.builtin.file:
+        path: /etc/docker
+        state: directory
+
+    - name: Point Docker data-root to the mounted ZFS volume
+      ansible.builtin.copy:
+        dest: /etc/docker/daemon.json
+        content: |
+          {
+            "data-root": "/srv/docker"
+          }
+      notify: Restart Docker
+
+  handlers:
+    - name: Restart Docker
+      ansible.builtin.systemd:
+        name: docker
+        state: restarted
+
