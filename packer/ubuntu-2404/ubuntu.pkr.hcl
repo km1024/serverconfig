@@ -42,11 +42,13 @@ source "proxmox-iso" "ubuntu" {
     model  = "virtio"
   }
 
+  scsi_controller = "virtio-scsi-single"
+
   disks {
     disk_size    = "20G"
     format       = "raw"
     storage_pool = "zpool"
-    type         = "virtio"
+    type         = "scsi"
   }
 
   os = "l26"
