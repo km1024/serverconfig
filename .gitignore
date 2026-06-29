@@ -1,3 +1,22 @@
 .env
 *.secrets.env
 
+# Local .terraform directories
+**/.terraform/*
+
+# .tfstate files (Contains plain-text secrets - NEVER commit)
+*.tfstate
+*.tfstate.*
+
+# .tfvars files (For keeping environment variables out of git)
+*.tfvars
+*.tfvars.json
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Override exception for the lock file
+!.terraform.lock.hcl
+
+
