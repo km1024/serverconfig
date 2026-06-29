@@ -68,5 +68,18 @@ source "proxmox-iso" "ubuntu" {
 
 build {
   sources = ["source.proxmox-iso.ubuntu"]
+
+  provisioner "shell" {
+    inline = [
+      # Wait for the initial installation's cloud-init to finish completely
+      "sudo cloud-init status --wait",
+      # Wipe the unique machine UUIDs
+      "sudo truncate -s 0 /etc/machine-id",
+      "sudo rm -f /var/lib/dbus/machine-id",
+      "sudo ln -s /etc/machine-id /var/lib/dbus/machine-id",
+      # Erase Cloud-Init's memory so it runs fresh on the next clone
+      "sudo cloud-init clean --logs"
+    ]
+  }
 }
 

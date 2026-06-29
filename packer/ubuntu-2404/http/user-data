@@ -19,4 +19,7 @@ autoinstall:
     - qemu-guest-agent
   user-data:
     package_upgrade: true
+  late-commands:
+    - echo 'ops ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/ops
+    - chmod 440 /target/etc/sudoers.d/ops
 
